@@ -27,8 +27,6 @@ if (!empty($_POST['From']) && !empty($_POST['Body']) && !empty($_POST['To'])) {
 		if (empty($results)) {
 			$wpdb->insert('wp_gh_contacts', array(
 				'email' => $from.'@carrier.com',
-				//'first_name' => 'First Test',
-				//'last_name' => 'Last Test',
 				'user_id' => 1,
 				'owner_id' => 1,
 				'optin_status' => 1,
@@ -36,14 +34,40 @@ if (!empty($_POST['From']) && !empty($_POST['Body']) && !empty($_POST['To'])) {
 				'date_optin_status_changed' => '2021-08-15 22:42:46'
 			));
 
+			$contact_id = $wpdb->insert_id;
+
 			$wpdb->insert('wp_gh_notes', array(
-				'object_id' => $wpdb->insert_id,
+				'object_id' => $contact_id,
 				'object_type' => 'contact',
 				'user_id' => 1,
 				'context' => 'sms',
 				'content' => $body,
 				'timestamp' => '1629066123',
 				'date_created' => '2021-08-15 22:42:46'
+			));
+
+			$wpdb->insert('wp_gh_contactmeta', array(
+				'contact_id' => $contact_id,
+				'meta_key' => 'primary_phone',
+				'meta_value' => $from
+			));
+
+			$results = $wpdb->get_results('SELECT * FROM wp_gh_tags WHERE tag_slug = "mobilecontact"');
+			if (empty($results)) {
+				$wpdb->insert('wp_gh_tags', array(
+					'tag_slug' => 'mobilecontact',
+					'tag_name' => 'mobilecontact',
+					'contact_count' => 1
+				));
+				$mobile_contact_tag_id = $wpdb->insert_id;
+			} else {
+				$mobile_contact_tag_id = $results[0]->tag_id;
+				$wpdb->update('wp_gh_tags', array('contact_count' => ($results[0]->contact_count+1)), array('tag_id' => $mobile_contact_tag_id));
+			}
+
+			$wpdb->insert('wp_gh_tag_relationships', array(
+				'tag_id' => $mobile_contact_tag_id,
+				'contact_id' => $contact_id
 			));
 
 		} else {
@@ -56,7 +80,6 @@ if (!empty($_POST['From']) && !empty($_POST['Body']) && !empty($_POST['To'])) {
 				'timestamp' => '1629066123',
 				'date_created' => '2021-08-15 22:42:46'
 			));
-			//$wpdb->update('wp_gh_contacts', array('first_name' => 'abc'), array('ID' => $results[0]->ID));
 		}
 		
 	}
