@@ -18,16 +18,19 @@ jQuery( document ).ready( function( $ ) {
 		mywindow.close();
 		return true;
 	};
-	notesDiv.appendChild(btn);
-	let btnClear = document.createElement("button");
-	btnClear.innerHTML = "Clear";
-	btnClear.onclick = function () {
-		var deleteButton = document.getElementsByClassName('delete-note delete danger');
-		for (var i=0, max=deleteButton.length; i < max; i++) {
-			 deleteButton[i].getElementsByTagName('a')[0].click();
-		}
-	};
-	notesDiv.appendChild(btnClear);
+	if (typeof notesDiv != 'undefined') {
+		notesDiv.appendChild(btn);
+		let btnClear = document.createElement("button");
+		btnClear.innerHTML = "Clear";
+		btnClear.onclick = function () {
+			var deleteButton = document.getElementsByClassName('delete-note delete danger');
+			for (var i=0, max=deleteButton.length; i < max; i++) {
+				 deleteButton[i].getElementsByTagName('a')[0].click();
+			}
+		};
+		notesDiv.appendChild(btnClear);
+	}
+
 		
 	 $("#send-email").click(function(){
 		  var email_content = $("#email_content_ifr").contents().find("#tinymce").html().replace(/<[^>]*>?/gm, '');
