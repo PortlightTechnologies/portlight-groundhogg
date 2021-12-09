@@ -1,0 +1,71 @@
+<?php
+/*
+ * Plugin Name: Sysaholic Contact Merge
+ * Plugin URI:
+ * Description: Merge back contact data between modules.
+ * Version: 1.0
+ * Author: Systemsaholic
+ * Author URI: http://www.systemsaholic.com
+ * Text Domain: portlight-groundhogg
+ * Domain Path: /languages
+ */
+
+
+//New ticket is created via HTTP POST Request to /wp-admin/admin.php From Twilio - Need to check if its in fact a SMS message
+if (!empty($_POST['action']) && strpos($_POST['request_email'], '@sms') !== false) {
+	
+	global $wpdb;
+
+
+	//Check if the incoming SMS Number matches the Primary or the Mobile number of a contact in Groundhogg.
+		
+		//Strip the @sms.com from the incoming request_email field
+		$requestEmail = $_POST['request_email'];
+		$contactMobile = preg_replace("/[^0-9]/", "",$_POST['request_email']);
+	   	//Get the GH contact ID where the Mobile Number matches in the database
+		$contactId = $wpdb->get_results("SELECT contact_id FROM wp_gh_contactmeta WHERE meta_value = '$contactMobile' LIMIT 1" );
+		//Get the new ticket ID
+		$ticketId = $wpdb->get_results("SELECT ticket_id FROM wp_wsdesk_tickets WHERE ticket_email = '$requestEmail' LIMIT 1");
+		
+
+	//IF the contact exists - then pull the contact's Full Name and email to insert into the WSDESK ticket properties
+
+	if (!empty($contactId)){
+		
+		//gather the contact details from GH
+		$contactFName = $wpdb->get_results("SELECT first_name FROM wp_gh_contacts WHERE id = '$contactId'" );
+		$contactLName = $wpdb->get_results("SELECT last_name FROM wp_gh_contacts WHERE id = '$contactId'" );
+		$contactEmail = $wpdb->get_results("SELECT email FROM wp_gh_contacts WHERE ID = '$contactId'" );
+	
+		//Get curent Meta Field data
+		$metaContentEmail = $wpdb->get_results("SELECT meta_value FROM wp_wsdesk_ticketsmeta WHERE ticket_id = '$ticketId' && meta_key = 'field_MK09'");
+		$metaContentMobile = $wpdb->get_results("SELECT meta_value FROM wp_wsdesk_ticketsmeta WHERE ticket_id = '$ticketId' && meta_key = 'field_PF91'");
+		
+		//Check WSdesk Ticket if the Email fields is already populated if not Populate it with the GH data
+		if (empty($metaContentEmail)){
+			$wpdb->insert('wp_wsdesk_ticketsmeta', array(
+				'ticket_id' => $ticketId,
+				'meta_key' => 'field_MK09',
+				'meta_value' => $contactEmail
+			));
+		}
+		//Check WSDesk Ticket if the Mobile fields is already populated if not Populate it with the GH data
+		if (empty($metaContentMobile)){
+			$wpdb->insert('wp_wsdesk_ticketsmeta', array(
+				'ticket_id' => $ticketId,
+				'meta_key' => 'field_PF91',
+				'meta_value' => $contactMobile
+			));
+		};
+		
+	} else {
+		//Else (no match on phone number) - Then create the contact in groundhogg with made up email PhoneNumber@sms.com
+		$wpdb->insert('wp_gh_contacts', array(
+			'email' => $_POST['request_email'],
+			'owner_id' => 1,
+			'optin_status' => 1,
+			'date_created' => date('Y-m-d H:i:s'),
+			'date_optin_status_changed' => date('Y-m-d H:i:s')
+		));
+	};
+}
